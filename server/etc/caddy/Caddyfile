@@ -1,0 +1,4 @@
+test.kuelib.de {
+	root * /usr/share/caddy
+	file_server
+}
