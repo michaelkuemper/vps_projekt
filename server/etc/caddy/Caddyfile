@@ -4,7 +4,12 @@ test.kuelib.de {
 }
 
 psa-vps.kuelib.de {
-	root * /var/www/psa/test
+	root * /var/www/psa/app/psa
+
+	# Von aussen gesperrt: Interna, Daten, Konfiguration, Cron-Skript
+	@gesperrt path /lib /lib/* /daten /daten/* /config.php /config.local.php /config.local.example.php /mission_data.json /check_mission.php
+	respond @gesperrt 404
+
 	php_fastcgi unix//run/php/php8.3-fpm-psa.sock
 	file_server
 }
