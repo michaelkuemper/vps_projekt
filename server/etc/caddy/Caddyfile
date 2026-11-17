@@ -2,3 +2,9 @@ test.kuelib.de {
 	root * /usr/share/caddy
 	file_server
 }
+
+psa-vps.kuelib.de {
+	root * /var/www/psa/test
+	php_fastcgi unix//run/php/php8.3-fpm-psa.sock
+	file_server
+}
