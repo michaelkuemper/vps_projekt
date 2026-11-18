@@ -3,7 +3,7 @@ test.kuelib.de {
 	file_server
 }
 
-psa-vps.kuelib.de {
+psa.kuelib.de, psa-vps.kuelib.de {
 	root * /var/www/psa/app/psa
 
 	# Von aussen gesperrt: Interna, Daten, Konfiguration, Cron-Skript
