@@ -1,0 +1,11 @@
+# PSA-Zentrale: Big-Wilma-Warteschlange abarbeiten und Einsatzmails verschicken.
+# Alle 5 Minuten als Benutzer psa (derselbe Benutzer wie PHP-FPM).
+# NOCH AUSGESCHALTET: erst einschalten, wenn der Cronjob bei Strato aus ist
+# und die echte mission_data.json auf dem VPS liegt.
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+#*/5 * * * * psa /usr/bin/php /var/www/psa/app/psa/check_mission.php 2>&1 | /usr/bin/logger -t psa-cron
+
