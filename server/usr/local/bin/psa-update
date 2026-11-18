@@ -1,0 +1,69 @@
+#!/bin/bash
+# psa-update: neuen Stand der PSA-Zentrale von GitHub holen und in Betrieb nehmen.
+# Aufruf als michael, NICHT mit sudo:  psa-update
+# Ablauf: pruefen -> neue Commits zeigen -> Datenbank sichern -> Code holen
+#         -> PHP-Syntax pruefen -> Seite testen
+# Liegt im Repo vps_projekt unter server/usr/local/bin/psa-update.
+
+set -euo pipefail
+
+APP=/var/www/psa/app
+DB=$APP/psa/daten/psa_archiv.sqlite
+SICHERUNG_DIR=$APP/psa/daten/sicherungen
+URL=https://psa-vps.kuelib.de/
+
+if [ "$(id -un)" != "michael" ]; then
+    echo "Bitte als michael aufrufen (nicht mit sudo)." >&2
+    exit 1
+fi
+
+cd "$APP"
+
+echo "== 1. Arbeitskopie pruefen"
+if [ -n "$(git status --porcelain)" ]; then
+    echo "Abbruch: In $APP gibt es lokale Aenderungen:" >&2
+    git status --short >&2
+    exit 1
+fi
+
+echo "== 2. Neuen Stand von GitHub abfragen"
+git fetch --quiet origin
+NEU=$(git log --oneline HEAD..origin/main)
+if [ -z "$NEU" ]; then
+    echo "Schon aktuell, nichts zu tun."
+    exit 0
+fi
+echo "Neue Commits:"
+echo "$NEU"
+ALT=$(git rev-parse --short HEAD)
+
+echo "== 3. Datenbank sichern"
+ZIEL="$SICHERUNG_DIR/psa_archiv_vor_update_$(date +%Y%m%d_%H%M%S).sqlite"
+sudo -u psa mkdir -p "$SICHERUNG_DIR"
+sudo -u psa php -r '$db = new PDO("sqlite:" . $argv[1]); $db->exec("VACUUM INTO " . $db->quote($argv[2]));' "$DB" "$ZIEL"
+echo "Gesichert: $ZIEL"
+
+echo "== 4. Code aktualisieren"
+git merge --ff-only --quiet origin/main
+echo "Jetzt auf Stand $(git rev-parse --short HEAD) (vorher $ALT)"
+
+echo "== 5. PHP-Syntax pruefen"
+FEHLER=0
+for f in $(git ls-files 'psa/*.php'); do
+    AUSGABE=$(php -l "$f" 2>&1) || { echo "$AUSGABE"; FEHLER=1; }
+done
+
+echo "== 6. Seite testen"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' "$URL" || true)
+echo "HTTP-Status von $URL: $CODE"
+[ "$CODE" = "200" ] || FEHLER=1
+
+if [ "$FEHLER" -ne 0 ]; then
+    echo
+    echo "ACHTUNG: Es gab Fehler. Zurueck zum alten Stand mit:"
+    echo "  git -C $APP reset --hard $ALT"
+    echo "Datenbank-Sicherung von vorhin: $ZIEL"
+    exit 1
+fi
+echo
+echo "Update erfolgreich."
